@@ -23,10 +23,9 @@ public class WishlistController {
         scrapers.add(new BolScraper());
         scrapers.add(new LegoScraper());
         scrapers.add(new AmazonScraper());
-        scrapers.add(new DreamLandScraper()); // Nieuw toegevoegd
+        scrapers.add(new DreamLandScraper());
     }
 
-    // ... (loadData en readContent blijven hetzelfde als in de vorige versie) ...
     public void loadData(List<String> jsonUrls, Map<String, String> localPaths, Runnable onComplete) {
         new Thread(() -> {
             try {
