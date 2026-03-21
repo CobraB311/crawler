@@ -47,7 +47,7 @@ public class WishlistUI extends JFrame {
         legoCb = new JCheckBox("Lego.com");
         amazonCb = new JCheckBox("Amazon");
         dreamCb = new JCheckBox("DreamLand");
-        
+
         left.add(bolCb); left.add(legoCb); left.add(amazonCb); left.add(dreamCb);
         left.add(Box.createVerticalStrut(20));
 
@@ -55,18 +55,18 @@ public class WishlistUI extends JFrame {
         itemBtn = createBtn("Geselecteerd Item", false);
         pauseBtn = createBtn("Pauzeer", false);
         stopBtn = createBtn("Stop", false);
-        
+
         left.add(startBtn); left.add(Box.createVerticalStrut(5));
         left.add(itemBtn); left.add(Box.createVerticalStrut(5));
         left.add(pauseBtn); left.add(Box.createVerticalStrut(5));
         left.add(stopBtn);
-        
+
         left.add(Box.createVerticalGlue());
 
         browserBtn = createBtn("Open Link", false);
         copyBtn = createBtn("Copy JSON", false);
         exportBtn = createBtn("Save naar File", false);
-        
+
         left.add(browserBtn); left.add(Box.createVerticalStrut(5));
         left.add(copyBtn); left.add(Box.createVerticalStrut(5));
         left.add(exportBtn);

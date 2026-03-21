@@ -42,12 +42,12 @@ public class WishlistAdmin {
             ui.legoCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.lego.enabled", "false")));
             ui.amazonCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.amazon.enabled", "true")));
             ui.dreamCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.dreamland.enabled", "true")));
-            
+
             List<String> urls = Arrays.asList(props.getProperty("wishlist.urls", "").split(","));
             String[] pathsArr = props.getProperty("wishlist.localPaths", "").split(",");
             Map<String, String> paths = new HashMap<>();
             for(int i = 0; i < urls.size(); i++) if(i < pathsArr.length) paths.put(urls.get(i).trim(), pathsArr[i].trim());
-            
+
             controller.loadData(urls, paths, () -> SwingUtilities.invokeLater(this::refreshTable));
         } catch (Exception e) { e.printStackTrace(); }
     }
@@ -86,17 +86,17 @@ public class WishlistAdmin {
             for (int i = 0; i < controller.getAllItems().size(); i++) {
                 if (controller.isShouldStop()) break;
                 synchronized(controller.getPauseLock()){ try{while(controller.isPaused())controller.getPauseLock().wait();}catch(Exception e){}}
-                
+
                 final int idx = i;
                 SwingUtilities.invokeLater(() -> ui.mainModel.setValueAt("Scannen...", idx, 3));
-                controller.scanSingleItemParallel(i, ui.bolCb.isSelected(), ui.legoCb.isSelected(), 
-                                                 ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), f -> {
-                    SwingUtilities.invokeLater(() -> {
-                        ui.mainModel.setValueAt("Klaar", f, 3);
-                        ui.progress.setValue(f + 1);
-                        if (ui.mainTable.getSelectedRow() == f) updateDetails();
-                    });
-                });
+                controller.scanSingleItemParallel(i, ui.bolCb.isSelected(), ui.legoCb.isSelected(),
+                        ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), f -> {
+                            SwingUtilities.invokeLater(() -> {
+                                ui.mainModel.setValueAt("Klaar", f, 3);
+                                ui.progress.setValue(f + 1);
+                                if (ui.mainTable.getSelectedRow() == f) updateDetails();
+                            });
+                        });
                 try { Thread.sleep(2500); } catch (Exception e) {}
             }
             ui.status.setText(" Scan voltooid");
@@ -107,13 +107,13 @@ public class WishlistAdmin {
         int row = ui.mainTable.getSelectedRow();
         if (row != -1) {
             ui.mainModel.setValueAt("Scannen...", row, 3);
-            controller.scanSingleItemParallel(row, ui.bolCb.isSelected(), ui.legoCb.isSelected(), 
-                                             ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), idx -> {
-                SwingUtilities.invokeLater(() -> {
-                    ui.mainModel.setValueAt("Bijgewerkt", idx, 3);
-                    updateDetails();
-                });
-            });
+            controller.scanSingleItemParallel(row, ui.bolCb.isSelected(), ui.legoCb.isSelected(),
+                    ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), idx -> {
+                        SwingUtilities.invokeLater(() -> {
+                            ui.mainModel.setValueAt("Bijgewerkt", idx, 3);
+                            updateDetails();
+                        });
+                    });
         }
     }
 
@@ -135,8 +135,8 @@ public class WishlistAdmin {
         if (row != -1) try { Desktop.getDesktop().browse(new URI(ui.detailTable.getValueAt(row, 3).toString())); } catch(Exception e){}
     }
 
-    public static void main(String[] args) { 
+    public static void main(String[] args) {
         FlatDarkLaf.setup();
-        SwingUtilities.invokeLater(WishlistAdmin::new); 
+        SwingUtilities.invokeLater(WishlistAdmin::new);
     }
 }
