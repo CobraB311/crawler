@@ -2,7 +2,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import java.io.*;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
@@ -14,7 +14,7 @@ public class WishlistController {
     private final List<JSONObject> allItemsList = new ArrayList<>();
     private final List<PriceScraper> scrapers = new ArrayList<>();
     private final ExecutorService executor = Executors.newFixedThreadPool(5);
-
+    
     private volatile boolean shouldStop = false;
     private volatile boolean isPaused = false;
     private final Object pauseLock = new Object();
@@ -53,7 +53,8 @@ public class WishlistController {
         if (local != null && new File(local).exists()) {
             return new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(local)), StandardCharsets.UTF_8);
         }
-        try (InputStream in = new URL(urlStr).openStream();
+        // Java 23 fix: Use URI.create().toURL()
+        try (InputStream in = URI.create(urlStr).toURL().openStream(); 
              BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             StringBuilder b = new StringBuilder(); String l;
             while ((l = r.readLine()) != null) b.append(l);
@@ -103,9 +104,6 @@ public class WishlistController {
         }
     }
 
-    /**
-     * Formatteert de JSON met de gevraagde volgorde: naam, prijs, link
-     */
     public String formatJson(JSONArray array) {
         StringBuilder sb = new StringBuilder("[\n");
         for (int i = 0; i < array.length(); i++) {
@@ -121,16 +119,15 @@ public class WishlistController {
                     JSONArray ws = obj.getJSONArray("winkels");
                     for (int j = 0; j < ws.length(); j++) {
                         JSONObject w = ws.getJSONObject(j);
-                        // HIER WORDT DE VOLGORDE AFGEDWONGEN: naam -> prijs -> link
                         sb.append("      { \"naam\": \"").append(w.getString("naam")).append("\", ")
-                                .append("\"prijs\": \"").append(w.getString("prijs")).append("\", ")
-                                .append("\"link\": \"").append(w.getString("link")).append("\" }")
-                                .append(j < ws.length() - 1 ? ",\n" : "\n");
+                          .append("\"prijs\": \"").append(w.getString("prijs")).append("\", ")
+                          .append("\"link\": \"").append(w.getString("link")).append("\" }")
+                          .append(j < ws.length() - 1 ? ",\n" : "\n");
                     }
                     sb.append("    ]\n");
                 } else {
                     sb.append("\"").append(obj.get(key).toString().replace("\"", "\\\"")).append("\"")
-                            .append(k < keys.length - 1 ? ",\n" : "\n");
+                      .append(k < keys.length - 1 ? ",\n" : "\n");
                 }
             }
             int lastComma = sb.lastIndexOf(",");

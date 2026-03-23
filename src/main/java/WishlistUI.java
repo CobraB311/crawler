@@ -1,13 +1,20 @@
 import javax.swing.*;
 import javax.swing.table.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.HashMap;
+import java.util.Map;
 
 public class WishlistUI extends JFrame {
     public JTable mainTable, detailTable;
     public DefaultTableModel mainModel, detailModel;
     public JButton startBtn, itemBtn, stopBtn, pauseBtn, copyBtn, exportBtn, browserBtn;
     public JCheckBox bolCb, legoCb, amazonCb, dreamCb;
+    public JPanel fileCheckboxesPanel;
+    public Map<String, JCheckBox> fileCheckBoxes = new HashMap<>();
     public JProgressBar progress;
     public JLabel status;
 
@@ -25,34 +32,43 @@ public class WishlistUI extends JFrame {
         };
         mainTable = new JTable(mainModel);
         mainTable.setRowHeight(28);
+        mainTable.getColumnModel().getColumn(2).setCellRenderer(new MainPriceColorRenderer());
 
         detailModel = new DefaultTableModel(new String[]{"Winkel", "JSON Prijs", "Live Prijs", "URL"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         detailTable = new JTable(detailModel);
         detailTable.setRowHeight(28);
-        detailTable.setDefaultRenderer(Object.class, new PriceColorRenderer());
+        detailTable.setDefaultRenderer(Object.class, new DetailPriceColorRenderer());
 
         JPanel left = new JPanel();
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
         left.setBorder(new EmptyBorder(15, 15, 15, 15));
-        left.setPreferredSize(new Dimension(240, 0));
+        left.setPreferredSize(new Dimension(260, 0));
 
-        JLabel title = new JLabel("CRAWLER SETTINGS");
-        title.setFont(new Font("SansSerif", Font.BOLD, 13));
-        left.add(title);
-        left.add(Box.createVerticalStrut(10));
+        // Sectie: Bestanden selecteren
+        fileCheckboxesPanel = new JPanel();
+        fileCheckboxesPanel.setLayout(new BoxLayout(fileCheckboxesPanel, BoxLayout.Y_AXIS));
+        fileCheckboxesPanel.setBorder(BorderFactory.createTitledBorder(null, "INPUT BESTANDEN", TitledBorder.LEFT, TitledBorder.TOP, new Font("SansSerif", Font.BOLD, 11)));
+        left.add(fileCheckboxesPanel);
+        left.add(Box.createVerticalStrut(15));
+
+        // Sectie: Winkels
+        JPanel shopPanel = new JPanel();
+        shopPanel.setLayout(new BoxLayout(shopPanel, BoxLayout.Y_AXIS));
+        shopPanel.setBorder(BorderFactory.createTitledBorder(null, "WINKELS", TitledBorder.LEFT, TitledBorder.TOP, new Font("SansSerif", Font.BOLD, 11)));
 
         bolCb = new JCheckBox("Bol.com");
         legoCb = new JCheckBox("Lego.com");
         amazonCb = new JCheckBox("Amazon");
         dreamCb = new JCheckBox("DreamLand");
 
-        left.add(bolCb); left.add(legoCb); left.add(amazonCb); left.add(dreamCb);
+        shopPanel.add(bolCb); shopPanel.add(legoCb); shopPanel.add(amazonCb); shopPanel.add(dreamCb);
+        left.add(shopPanel);
         left.add(Box.createVerticalStrut(20));
 
         startBtn = createBtn("Volledige Scan", true);
-        itemBtn = createBtn("Geselecteerd Item", false);
+        itemBtn = createBtn("Scan Selectie", false);
         pauseBtn = createBtn("Pauzeer", false);
         stopBtn = createBtn("Stop", false);
 
@@ -96,16 +112,51 @@ public class WishlistUI extends JFrame {
         return b;
     }
 
-    private class PriceColorRenderer extends DefaultTableCellRenderer {
+    private class DetailPriceColorRenderer extends DefaultTableCellRenderer {
         @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
             Component comp = super.getTableCellRendererComponent(t, v, s, f, r, c);
             if (c == 2 && v != null && v.toString().contains("€")) {
                 try {
                     double o = Double.parseDouble(t.getValueAt(r, 1).toString().replaceAll("[^0-9,]", "").replace(",", "."));
                     double n = Double.parseDouble(v.toString().replaceAll("[^0-9,]", "").replace(",", "."));
-                    comp.setForeground(n < o ? new Color(100, 220, 100) : (n > o ? new Color(255, 100, 100) : null));
+                    if (n < o) comp.setForeground(new Color(100, 220, 100));
+                    else if (n > o) comp.setForeground(new Color(255, 100, 100));
+                    else comp.setForeground(null);
                 } catch (Exception e) { comp.setForeground(null); }
             } else comp.setForeground(null);
+            return comp;
+        }
+    }
+
+    private class MainPriceColorRenderer extends DefaultTableCellRenderer {
+        @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
+            Component comp = super.getTableCellRendererComponent(t, v, s, f, r, c);
+            Window window = SwingUtilities.getWindowAncestor(t);
+            if (window instanceof WishlistUI uiFrame) {
+                Object clientProp = uiFrame.getRootPane().getClientProperty("controller");
+                if (clientProp instanceof WishlistController ctrl) {
+                    if (r < ctrl.getAllItems().size()) {
+                        JSONObject item = ctrl.getAllItems().get(r);
+                        JSONArray winkels = item.getJSONArray("winkels");
+                        boolean hasGreens = false, hasReds = false;
+                        for (int i = 0; i < winkels.length(); i++) {
+                            JSONObject w = winkels.getJSONObject(i);
+                            if (w.has("live_prijs") && w.getString("live_prijs").contains("€")) {
+                                try {
+                                    double oldP = Double.parseDouble(w.getString("prijs").replaceAll("[^0-9,]", "").replace(",", "."));
+                                    double newP = Double.parseDouble(w.getString("live_prijs").replaceAll("[^0-9,]", "").replace(",", "."));
+                                    if (newP < oldP) hasGreens = true;
+                                    if (newP > oldP) hasReds = true;
+                                } catch (Exception e) {}
+                            }
+                        }
+                        if (hasGreens && hasReds) comp.setForeground(new Color(100, 150, 255));
+                        else if (hasGreens) comp.setForeground(new Color(100, 220, 100));
+                        else if (hasReds) comp.setForeground(new Color(255, 100, 100));
+                        else comp.setForeground(null);
+                    }
+                }
+            }
             return comp;
         }
     }

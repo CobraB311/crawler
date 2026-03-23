@@ -6,6 +6,7 @@ import java.awt.datatransfer.StringSelection;
 import java.net.URI;
 import java.awt.Desktop;
 import java.io.*;
+import org.json.JSONObject;
 
 public class WishlistAdmin {
     private final WishlistUI ui;
@@ -14,6 +15,8 @@ public class WishlistAdmin {
     public WishlistAdmin() {
         ui = new WishlistUI();
         controller = new WishlistController();
+        ui.getRootPane().putClientProperty("controller", controller);
+        
         setupActions();
         loadConfigAndData();
         ui.setVisible(true);
@@ -42,12 +45,25 @@ public class WishlistAdmin {
             ui.legoCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.lego.enabled", "false")));
             ui.amazonCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.amazon.enabled", "true")));
             ui.dreamCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.dreamland.enabled", "true")));
-
+            
             List<String> urls = Arrays.asList(props.getProperty("wishlist.urls", "").split(","));
             String[] pathsArr = props.getProperty("wishlist.localPaths", "").split(",");
             Map<String, String> paths = new HashMap<>();
-            for(int i = 0; i < urls.size(); i++) if(i < pathsArr.length) paths.put(urls.get(i).trim(), pathsArr[i].trim());
+            
+            ui.fileCheckboxesPanel.removeAll();
+            ui.fileCheckBoxes.clear();
 
+            for(int i = 0; i < urls.size(); i++) {
+                String url = urls.get(i).trim();
+                if(i < pathsArr.length) paths.put(url, pathsArr[i].trim());
+                
+                // Voeg checkbox toe per bestand
+                String fileName = url.substring(url.lastIndexOf("/") + 1);
+                JCheckBox cb = new JCheckBox(fileName, true);
+                ui.fileCheckBoxes.put(url, cb);
+                ui.fileCheckboxesPanel.add(cb);
+            }
+            
             controller.loadData(urls, paths, () -> SwingUtilities.invokeLater(this::refreshTable));
         } catch (Exception e) { e.printStackTrace(); }
     }
@@ -65,6 +81,7 @@ public class WishlistAdmin {
             String p = item.getJSONArray("winkels").length() > 0 ? item.getJSONArray("winkels").getJSONObject(0).getString("prijs") : "N/A";
             ui.mainModel.addRow(new Object[]{item.getString("id"), item.getString("naam"), p, "Gereed"});
         }
+        ui.revalidate(); ui.repaint();
     }
 
     private void updateDetails() {
@@ -82,21 +99,42 @@ public class WishlistAdmin {
         new Thread(() -> {
             controller.setStop(false);
             ui.progress.setVisible(true);
-            ui.progress.setMaximum(controller.getAllItems().size());
-            for (int i = 0; i < controller.getAllItems().size(); i++) {
-                if (controller.isShouldStop()) break;
-                synchronized(controller.getPauseLock()){ try{while(controller.isPaused())controller.getPauseLock().wait();}catch(Exception e){}}
+            
+            // Filteren welke items gescand moeten worden op basis van bestand-checkboxes
+            List<Integer> indicesToScan = new ArrayList<>();
+            for (String url : controller.getLoadedFiles().keySet()) {
+                if (ui.fileCheckBoxes.get(url).isSelected()) {
+                    var itemsInFile = controller.getLoadedFiles().get(url);
+                    // Vind de globale index van deze items
+                    for (int j = 0; j < itemsInFile.length(); j++) {
+                        JSONObject itemObj = itemsInFile.getJSONObject(j);
+                        indicesToScan.add(controller.getAllItems().indexOf(itemObj));
+                    }
+                }
+            }
 
-                final int idx = i;
-                SwingUtilities.invokeLater(() -> ui.mainModel.setValueAt("Scannen...", idx, 3));
-                controller.scanSingleItemParallel(i, ui.bolCb.isSelected(), ui.legoCb.isSelected(),
-                        ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), f -> {
-                            SwingUtilities.invokeLater(() -> {
-                                ui.mainModel.setValueAt("Klaar", f, 3);
-                                ui.progress.setValue(f + 1);
-                                if (ui.mainTable.getSelectedRow() == f) updateDetails();
-                            });
-                        });
+            ui.progress.setMaximum(indicesToScan.size());
+            int processed = 0;
+
+            for (Integer idx : indicesToScan) {
+                if (controller.isShouldStop()) break;
+                synchronized(controller.getPauseLock()){ 
+                    try { while(controller.isPaused() && !controller.isShouldStop()) controller.getPauseLock().wait(); } catch(Exception e){}
+                }
+                
+                final int currentIdx = idx;
+                SwingUtilities.invokeLater(() -> ui.mainModel.setValueAt("Scannen...", currentIdx, 3));
+                
+                final int progressVal = ++processed;
+                controller.scanSingleItemParallel(idx, ui.bolCb.isSelected(), ui.legoCb.isSelected(), 
+                                                 ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), f -> {
+                    SwingUtilities.invokeLater(() -> {
+                        ui.mainModel.setValueAt("Klaar", f, 3);
+                        ui.progress.setValue(progressVal);
+                        ui.mainModel.fireTableRowsUpdated(f, f);
+                        if (ui.mainTable.getSelectedRow() == f) updateDetails();
+                    });
+                });
                 try { Thread.sleep(2500); } catch (Exception e) {}
             }
             ui.status.setText(" Scan voltooid");
@@ -107,13 +145,14 @@ public class WishlistAdmin {
         int row = ui.mainTable.getSelectedRow();
         if (row != -1) {
             ui.mainModel.setValueAt("Scannen...", row, 3);
-            controller.scanSingleItemParallel(row, ui.bolCb.isSelected(), ui.legoCb.isSelected(),
-                    ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), idx -> {
-                        SwingUtilities.invokeLater(() -> {
-                            ui.mainModel.setValueAt("Bijgewerkt", idx, 3);
-                            updateDetails();
-                        });
-                    });
+            controller.scanSingleItemParallel(row, ui.bolCb.isSelected(), ui.legoCb.isSelected(), 
+                                             ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), idx -> {
+                SwingUtilities.invokeLater(() -> {
+                    ui.mainModel.setValueAt("Bijgewerkt", idx, 3);
+                    ui.mainModel.fireTableRowsUpdated(idx, idx);
+                    updateDetails();
+                });
+            });
         }
     }
 
@@ -132,11 +171,13 @@ public class WishlistAdmin {
 
     private void openUrl() {
         int row = ui.detailTable.getSelectedRow();
-        if (row != -1) try { Desktop.getDesktop().browse(new URI(ui.detailTable.getValueAt(row, 3).toString())); } catch(Exception e){}
+        if (row != -1) {
+            try { Desktop.getDesktop().browse(URI.create(ui.detailTable.getValueAt(row, 3).toString())); } catch(Exception e){}
+        }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) { 
         FlatDarkLaf.setup();
-        SwingUtilities.invokeLater(WishlistAdmin::new);
+        SwingUtilities.invokeLater(WishlistAdmin::new); 
     }
 }
