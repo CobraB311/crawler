@@ -11,8 +11,8 @@ import java.util.Map;
 public class WishlistUI extends JFrame {
     public JTable mainTable, detailTable;
     public DefaultTableModel mainModel, detailModel;
-    public JButton startBtn, itemBtn, stopBtn, pauseBtn, copyBtn, exportBtn, browserBtn;
-    public JCheckBox bolCb, legoCb, amazonCb, dreamCb;
+    public JButton startBtn, itemBtn, stopBtn, pauseBtn, copyBtn, exportBtn, browserBtn, validateBtn;
+    public JCheckBox bolCb, legoCb, amazonCb, dreamCb, fnacCb, supraCb;
     public JPanel fileCheckboxesPanel;
     public Map<String, JCheckBox> fileCheckBoxes = new HashMap<>();
     public JProgressBar progress;
@@ -46,43 +46,46 @@ public class WishlistUI extends JFrame {
         left.setBorder(new EmptyBorder(15, 15, 15, 15));
         left.setPreferredSize(new Dimension(260, 0));
 
-        // Sectie: Bestanden selecteren
         fileCheckboxesPanel = new JPanel();
         fileCheckboxesPanel.setLayout(new BoxLayout(fileCheckboxesPanel, BoxLayout.Y_AXIS));
         fileCheckboxesPanel.setBorder(BorderFactory.createTitledBorder(null, "INPUT BESTANDEN", TitledBorder.LEFT, TitledBorder.TOP, new Font("SansSerif", Font.BOLD, 11)));
         left.add(fileCheckboxesPanel);
         left.add(Box.createVerticalStrut(15));
 
-        // Sectie: Winkels
         JPanel shopPanel = new JPanel();
         shopPanel.setLayout(new BoxLayout(shopPanel, BoxLayout.Y_AXIS));
         shopPanel.setBorder(BorderFactory.createTitledBorder(null, "WINKELS", TitledBorder.LEFT, TitledBorder.TOP, new Font("SansSerif", Font.BOLD, 11)));
-
+        
         bolCb = new JCheckBox("Bol.com");
         legoCb = new JCheckBox("Lego.com");
         amazonCb = new JCheckBox("Amazon");
         dreamCb = new JCheckBox("DreamLand");
-
-        shopPanel.add(bolCb); shopPanel.add(legoCb); shopPanel.add(amazonCb); shopPanel.add(dreamCb);
+        fnacCb = new JCheckBox("Fnac.be");
+        supraCb = new JCheckBox("SupraBazar");
+        
+        shopPanel.add(bolCb); shopPanel.add(legoCb); shopPanel.add(amazonCb); 
+        shopPanel.add(dreamCb); shopPanel.add(fnacCb); shopPanel.add(supraCb);
         left.add(shopPanel);
         left.add(Box.createVerticalStrut(20));
 
-        startBtn = createBtn("Volledige Scan", true);
+        startBtn = createBtn("Volledige Prijs Scan", true);
+        validateBtn = createBtn("Check Kapotte Links", false);
         itemBtn = createBtn("Scan Selectie", false);
         pauseBtn = createBtn("Pauzeer", false);
         stopBtn = createBtn("Stop", false);
-
+        
         left.add(startBtn); left.add(Box.createVerticalStrut(5));
+        left.add(validateBtn); left.add(Box.createVerticalStrut(5));
         left.add(itemBtn); left.add(Box.createVerticalStrut(5));
         left.add(pauseBtn); left.add(Box.createVerticalStrut(5));
         left.add(stopBtn);
-
+        
         left.add(Box.createVerticalGlue());
 
         browserBtn = createBtn("Open Link", false);
         copyBtn = createBtn("Copy JSON", false);
         exportBtn = createBtn("Save naar File", false);
-
+        
         left.add(browserBtn); left.add(Box.createVerticalStrut(5));
         left.add(copyBtn); left.add(Box.createVerticalStrut(5));
         left.add(exportBtn);
@@ -123,6 +126,8 @@ public class WishlistUI extends JFrame {
                     else if (n > o) comp.setForeground(new Color(255, 100, 100));
                     else comp.setForeground(null);
                 } catch (Exception e) { comp.setForeground(null); }
+            } else if (v != null && v.toString().startsWith("FOUT")) {
+                comp.setForeground(Color.RED);
             } else comp.setForeground(null);
             return comp;
         }

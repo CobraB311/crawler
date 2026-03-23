@@ -2,6 +2,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -24,6 +25,8 @@ public class WishlistController {
         scrapers.add(new LegoScraper());
         scrapers.add(new AmazonScraper());
         scrapers.add(new DreamLandScraper());
+        scrapers.add(new FnacScraper());
+        scrapers.add(new SupraBazarScraper());
     }
 
     public void loadData(List<String> jsonUrls, Map<String, String> localPaths, Runnable onComplete) {
@@ -53,7 +56,6 @@ public class WishlistController {
         if (local != null && new File(local).exists()) {
             return new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(local)), StandardCharsets.UTF_8);
         }
-        // Java 23 fix: Use URI.create().toURL()
         try (InputStream in = URI.create(urlStr).toURL().openStream(); 
              BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             StringBuilder b = new StringBuilder(); String l;
@@ -62,7 +64,7 @@ public class WishlistController {
         }
     }
 
-    public void scanSingleItemParallel(int index, boolean bol, boolean lego, boolean amzn, boolean dream, Consumer<Integer> onFinish) {
+    public void scanSingleItemParallel(int index, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, Consumer<Integer> onFinish) {
         JSONObject item = allItemsList.get(index);
         JSONArray winkels = item.getJSONArray("winkels");
         List<CompletableFuture<Void>> futures = new ArrayList<>();
@@ -70,7 +72,7 @@ public class WishlistController {
         for (int j = 0; j < winkels.length(); j++) {
             JSONObject w = winkels.getJSONObject(j);
             String link = w.getString("link");
-            if (shouldSkip(link, bol, lego, amzn, dream)) {
+            if (shouldSkip(link, bol, lego, amzn, dream, fnac, supra)) {
                 w.put("live_prijs", "Gedeactiveerd");
                 continue;
             }
@@ -83,12 +85,29 @@ public class WishlistController {
                 .thenRun(() -> onFinish.accept(index));
     }
 
-    private boolean shouldSkip(String link, boolean bol, boolean lego, boolean amzn, boolean dream) {
+    public String checkLink(String urlStr) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) URI.create(urlStr).toURL().openConnection();
+            connection.setRequestMethod("HEAD");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+            int code = connection.getResponseCode();
+            if (code >= 200 && code < 400) return "OK (" + code + ")";
+            return "FOUT (" + code + ")";
+        } catch (Exception e) {
+            return "Onbereikbaar";
+        }
+    }
+
+    private boolean shouldSkip(String link, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra) {
         String l = link.toLowerCase();
         if (l.contains("bol.com") && !bol) return true;
         if (l.contains("lego.com") && !lego) return true;
         if ((l.contains("amazon.") || l.contains("amzn.eu")) && !amzn) return true;
         if (l.contains("dreamland.be") && !dream) return true;
+        if (l.contains("fnac.be") && !fnac) return true;
+        if (l.contains("suprabazar.be") && !supra) return true;
         return false;
     }
 
@@ -127,7 +146,7 @@ public class WishlistController {
                     sb.append("    ]\n");
                 } else {
                     sb.append("\"").append(obj.get(key).toString().replace("\"", "\\\"")).append("\"")
-                      .append(k < keys.length - 1 ? ",\n" : "\n");
+                          .append(k < keys.length - 1 ? ",\n" : "\n");
                 }
             }
             int lastComma = sb.lastIndexOf(",");
