@@ -27,6 +27,7 @@ public class WishlistController {
         scrapers.add(new DreamLandScraper());
         scrapers.add(new FnacScraper());
         scrapers.add(new SupraBazarScraper());
+        scrapers.add(new MediaMarktScraper());
     }
 
     public void loadData(List<String> jsonUrls, Map<String, String> localPaths, Runnable onComplete) {
@@ -64,7 +65,7 @@ public class WishlistController {
         }
     }
 
-    public void scanSingleItemParallel(int index, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, Consumer<Integer> onFinish) {
+    public void scanSingleItemParallel(int index, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, boolean media, Consumer<Integer> onFinish) {
         JSONObject item = allItemsList.get(index);
         JSONArray winkels = item.getJSONArray("winkels");
         List<CompletableFuture<Void>> futures = new ArrayList<>();
@@ -72,7 +73,7 @@ public class WishlistController {
         for (int j = 0; j < winkels.length(); j++) {
             JSONObject w = winkels.getJSONObject(j);
             String link = w.getString("link");
-            if (shouldSkip(link, bol, lego, amzn, dream, fnac, supra)) {
+            if (shouldSkip(link, bol, lego, amzn, dream, fnac, supra, media)) {
                 w.put("live_prijs", "Gedeactiveerd");
                 continue;
             }
@@ -100,7 +101,7 @@ public class WishlistController {
         }
     }
 
-    private boolean shouldSkip(String link, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra) {
+    private boolean shouldSkip(String link, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, boolean media) {
         String l = link.toLowerCase();
         if (l.contains("bol.com") && !bol) return true;
         if (l.contains("lego.com") && !lego) return true;
@@ -108,6 +109,7 @@ public class WishlistController {
         if (l.contains("dreamland.be") && !dream) return true;
         if (l.contains("fnac.be") && !fnac) return true;
         if (l.contains("suprabazar.be") && !supra) return true;
+        if (l.contains("mediamarkt.be") && !media) return true;
         return false;
     }
 
