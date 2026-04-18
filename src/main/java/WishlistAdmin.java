@@ -49,6 +49,7 @@ public class WishlistAdmin {
             ui.fnacCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.fnac.enabled", "false")));
             ui.supraCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.suprabazar.enabled", "true")));
             ui.mediaCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.mediamarkt.enabled", "true")));
+            ui.coolblueCb.setSelected(Boolean.parseBoolean(props.getProperty("crawler.coolblue.enabled", "true")));
             
             List<String> urls = Arrays.asList(props.getProperty("wishlist.urls", "").split(","));
             String[] pathsArr = props.getProperty("wishlist.localPaths", "").split(",");
@@ -147,7 +148,7 @@ public class WishlistAdmin {
                 final int pVal = ++processed;
                 controller.scanSingleItemParallel(idx, ui.bolCb.isSelected(), ui.legoCb.isSelected(), 
                         ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), ui.fnacCb.isSelected(), 
-                        ui.supraCb.isSelected(), ui.mediaCb.isSelected(), f -> {
+                        ui.supraCb.isSelected(), ui.mediaCb.isSelected(), ui.coolblueCb.isSelected(), f -> {
                     SwingUtilities.invokeLater(() -> {
                         ui.mainModel.setValueAt("Klaar", f, 3);
                         ui.progress.setValue(pVal);
@@ -180,7 +181,7 @@ public class WishlistAdmin {
             ui.mainModel.setValueAt("Scannen...", row, 3);
             controller.scanSingleItemParallel(row, ui.bolCb.isSelected(), ui.legoCb.isSelected(), 
                     ui.amazonCb.isSelected(), ui.dreamCb.isSelected(), ui.fnacCb.isSelected(), 
-                    ui.supraCb.isSelected(), ui.mediaCb.isSelected(), idx -> {
+                    ui.supraCb.isSelected(), ui.mediaCb.isSelected(), ui.coolblueCb.isSelected(), idx -> {
                 SwingUtilities.invokeLater(() -> {
                     ui.mainModel.setValueAt("Bijgewerkt", idx, 3);
                     ui.mainModel.fireTableRowsUpdated(idx, idx);
