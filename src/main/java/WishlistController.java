@@ -29,6 +29,7 @@ public class WishlistController {
         scrapers.add(new SupraBazarScraper());
         scrapers.add(new MediaMarktScraper());
         scrapers.add(new CoolblueScraper());
+        scrapers.add(new KinderplaneetScraper());
     }
 
     public void loadData(List<String> jsonUrls, Map<String, String> localPaths, Runnable onComplete) {
@@ -66,7 +67,7 @@ public class WishlistController {
         }
     }
 
-    public void scanSingleItemParallel(int index, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, boolean media, boolean cool, Consumer<Integer> onFinish) {
+    public void scanSingleItemParallel(int index, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, boolean media, boolean cool, boolean kinder, Consumer<Integer> onFinish) {
         JSONObject item = allItemsList.get(index);
         JSONArray winkels = item.getJSONArray("winkels");
         List<CompletableFuture<Void>> futures = new ArrayList<>();
@@ -74,7 +75,7 @@ public class WishlistController {
         for (int j = 0; j < winkels.length(); j++) {
             JSONObject w = winkels.getJSONObject(j);
             String link = w.getString("link");
-            if (shouldSkip(link, bol, lego, amzn, dream, fnac, supra, media, cool)) {
+            if (shouldSkip(link, bol, lego, amzn, dream, fnac, supra, media, cool, kinder)) {
                 w.put("live_prijs", "Gedeactiveerd");
                 continue;
             }
@@ -102,7 +103,7 @@ public class WishlistController {
         }
     }
 
-    private boolean shouldSkip(String link, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, boolean media, boolean cool) {
+    private boolean shouldSkip(String link, boolean bol, boolean lego, boolean amzn, boolean dream, boolean fnac, boolean supra, boolean media, boolean cool, boolean kinder) {
         String l = link.toLowerCase();
         if (l.contains("bol.com") && !bol) return true;
         if (l.contains("lego.com") && !lego) return true;
@@ -112,6 +113,7 @@ public class WishlistController {
         if (l.contains("suprabazar.be") && !supra) return true;
         if (l.contains("mediamarkt.be") && !media) return true;
         if (l.contains("coolblue.") && !cool) return true;
+        if (l.contains("dekinderplaneet.be") && !kinder) return true;
         return false;
     }
 
@@ -143,7 +145,6 @@ public class WishlistController {
                     for (int j = 0; j < ws.length(); j++) {
                         JSONObject w = ws.getJSONObject(j);
                         String p = w.getString("prijs");
-                        // Extra veiligheid: herstel prijzen die eindigen op een komma tijdens export
                         if (p.endsWith(",")) p += "00";
                         if (p.contains(",") && p.split(",").length > 1 && p.split(",")[1].length() == 1) p += "0";
 

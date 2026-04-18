@@ -12,7 +12,7 @@ public class WishlistUI extends JFrame {
     public JTable mainTable, detailTable;
     public DefaultTableModel mainModel, detailModel;
     public JButton startBtn, itemBtn, stopBtn, pauseBtn, copyBtn, exportBtn, browserBtn, validateBtn;
-    public JCheckBox bolCb, legoCb, amazonCb, dreamCb, fnacCb, supraCb, mediaCb, coolblueCb;
+    public JCheckBox bolCb, legoCb, amazonCb, dreamCb, fnacCb, supraCb, mediaCb, coolblueCb, kinderCb;
     public JPanel fileCheckboxesPanel;
     public Map<String, JCheckBox> fileCheckBoxes = new HashMap<>();
     public JProgressBar progress;
@@ -64,10 +64,11 @@ public class WishlistUI extends JFrame {
         supraCb = new JCheckBox("SupraBazar");
         mediaCb = new JCheckBox("MediaMarkt");
         coolblueCb = new JCheckBox("Coolblue");
+        kinderCb = new JCheckBox("Kinderplaneet");
         
         shopPanel.add(bolCb); shopPanel.add(legoCb); shopPanel.add(amazonCb); 
         shopPanel.add(dreamCb); shopPanel.add(fnacCb); shopPanel.add(supraCb); 
-        shopPanel.add(mediaCb); shopPanel.add(coolblueCb);
+        shopPanel.add(mediaCb); shopPanel.add(coolblueCb); shopPanel.add(kinderCb);
         left.add(shopPanel);
         left.add(Box.createVerticalStrut(20));
 
