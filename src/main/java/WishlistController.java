@@ -134,7 +134,7 @@ public class WishlistController {
         for (int i = 0; i < array.length(); i++) {
             JSONObject obj = array.getJSONObject(i);
             sb.append("  {\n");
-            String[] keys = {"id", "naam", "nummer", "beschrijving", "afbeelding_url", "winkels"};
+            String[] keys = {"id", "naam", "nummer", "video_id", "beschrijving", "afbeelding_url", "winkels"};
             for (int k = 0; k < keys.length; k++) {
                 String key = keys[k];
                 if (!obj.has(key)) continue;
