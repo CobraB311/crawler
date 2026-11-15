@@ -1,5 +1,4 @@
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -7,7 +6,10 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,40 +23,54 @@ public class FnacScraper extends BaseScraper {
     @Override
     public String fetchPrice(String url) {
         ChromeOptions options = new ChromeOptions();
-        //options.addArguments("--headless=new");
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36");
 
-        WebDriver driver = new ChromeDriver(options);
+        // Sla cookies en DataDome-validatie op in een vaste profielmap
+        options.addArguments("user-data-dir=C:/temp/fnac-chrome-profile");
+
+        // Laat deze regel EERST uitgeschakeld om de puzzel eenmalig op te lossen,
+        // of laat hem uit als Fnac headless blijft blokkeren:
+        // options.addArguments("--headless=new");
+
+        options.addArguments("--disable-blink-features=AutomationControlled");
+        options.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
+        options.setExperimentalOption("useAutomationExtension", false);
+        options.addArguments("--window-size=1920,1080");
+        // GEEN handmatige user-agent instellen zodat deze 100% matcht met Chrome 156
+
+        ChromeDriver driver = new ChromeDriver(options);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("source", "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+        driver.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params);
 
         try {
             driver.get(url);
 
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+            // Geef extra tijd om eventueel handmatig de puzzel op te lossen tijdens de eerste run
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
 
-            // 1. Probeer de OneTrust cookie-banner automatisch weg te klikken
+            // 1. OneTrust cookie-banner sluiten indien aanwezig
             try {
-                WebElement acceptBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("onetrust-accept-btn-handler")));
+                WebElement acceptBtn = new WebDriverWait(driver, Duration.ofSeconds(3))
+                        .until(ExpectedConditions.elementToBeClickable(By.id("onetrust-accept-btn-handler")));
                 acceptBtn.click();
             } catch (Exception ignored) {
-                // Cookie banner was er niet of al geaccepteerd
             }
 
-            // 2. Wacht tot de buy-box container geladen is (werkt zowel voor eigen voorraad als Marketplace partners)
+            // 2. Wacht tot de buy-box container geladen is
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".js-fnacBuyBox, [data-automation-id='product-offer-fnac'], .f-productOffers-mp")));
 
-            String pageSource = driver.getPageSource();
-
-            // Methode 1: Direct via het 'data-price' attribuut van de geselecteerde/standaard input
+            // Methode 1: Direct via het 'data-price' attribuut
             try {
                 WebElement priceInput = driver.findElement(By.cssSelector("input[name='fnacoffer']"));
                 String dataPrice = priceInput.getAttribute("data-price");
                 if (dataPrice != null && !dataPrice.isEmpty()) {
                     return "€ " + dataPrice.replace(".", ",");
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
-            // Methode 2: Via de visuele .userPrice klasse binnen de buy-box
+            // Methode 2: Via de visuele .userPrice klasse
             List<WebElement> userPriceElements = driver.findElements(By.cssSelector(".js-fnacBuyBox .userPrice, .f-productOffers-mp .userPrice"));
             for (WebElement priceElem : userPriceElements) {
                 String priceText = priceElem.getText().trim();
@@ -67,7 +83,7 @@ public class FnacScraper extends BaseScraper {
 
             // Methode 3: JSON-LD fallback
             Pattern p = Pattern.compile("\"price\"\\s*:\\s*\"?(\\d+[\\.,]?\\d*)\"?");
-            Matcher m = p.matcher(pageSource);
+            Matcher m = p.matcher(driver.getPageSource());
             if (m.find()) {
                 String priceFound = m.group(1).replace(".", ",");
                 if (!priceFound.contains(",")) priceFound += ",00";
